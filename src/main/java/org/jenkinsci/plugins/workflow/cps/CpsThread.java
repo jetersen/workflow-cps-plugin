@@ -26,6 +26,7 @@ package org.jenkinsci.plugins.workflow.cps;
 
 import com.cloudbees.groovy.cps.Continuable;
 import com.cloudbees.groovy.cps.Outcome;
+import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.SettableFuture;
 import java.io.IOException;
@@ -111,7 +112,7 @@ public final class CpsThread implements Serializable {
     /**
      * Gets called when the thread is done.
      */
-    private final List<FutureCallback<Object>> completionHandlers = new ArrayList<FutureCallback<Object>>();
+    private final List<FutureCallback<Object>> completionHandlers = new ArrayList<>();
 
     CpsThread(CpsThreadGroup group, int id, Continuable program, FlowHead head, ContextVariableSet contextVariables) {
         this.group = group;
@@ -159,12 +160,10 @@ public final class CpsThread implements Serializable {
         this.step = step;
     }
 
-    private static final List<Class> categories;
-    static {
-        categories = new ArrayList<>();
-        categories.addAll(Continuable.categories);
-        categories.add(IteratorHack.class);
-    }
+    private static final List<Class> CATEGORIES = ImmutableList.<Class>builder()
+            .addAll(Continuable.categories)
+            .add(IteratorHack.class)
+            .build();
 
     /**
      * Executes CPS code synchronously a little bit more, until it hits
@@ -183,7 +182,7 @@ public final class CpsThread implements Serializable {
             LOGGER.log(FINE, "runNextChunk on {0}", resumeValue);
             final Outcome o = resumeValue;
             resumeValue = null;
-            outcome = program.run0(o, categories);
+            outcome = program.run0(o, CATEGORIES);
             if (outcome.getAbnormal() != null) {
                 LOGGER.log(FINE, "ran and produced error", outcome.getAbnormal());
             } else {
@@ -216,7 +215,6 @@ public final class CpsThread implements Serializable {
                         // SettableFuture tries to rethrow an Error, which we don't want.
                         // so prevent that from happening. I need to see if this behaviour
                         // affects other places that use SettableFuture
-                        ;
                     } else {
                         throw e;
                     }
@@ -320,7 +318,7 @@ public final class CpsThread implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private static final ThreadLocal<CpsThread> CURRENT = new ThreadLocal<CpsThread>();
+    private static final ThreadLocal<CpsThread> CURRENT = new ThreadLocal<>();
 
     /**
      * While {@link CpsThreadGroup} executes, this method returns {@link CpsThread}
